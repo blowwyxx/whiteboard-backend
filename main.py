@@ -20,28 +20,27 @@ def generate_video(data: ScriptRequest):
     video_id = str(uuid.uuid4())
     frames = []
 
-    # Split script into lines
-    lines = script_text.split("\n")
+    # Use a default system font (for Linux/Render compatibility)
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    font_size = 36
+    font = ImageFont.truetype(font_path, font_size)
 
-    # Use system font (compatible on Render VPS)
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    font = ImageFont.truetype(font_path, 40)
+    lines = script_text.strip().split("\n")
 
     for i, line in enumerate(lines):
         img = Image.new("RGB", (1280, 720), color=(255, 255, 255))
         draw = ImageDraw.Draw(img)
-        draw.text((100, 100), line, font=font, fill=(0, 0, 0))
+        w, h = draw.textsize(line, font=font)
+        draw.text(((1280 - w) / 2, (720 - h) / 2), line, font=font, fill=(0, 0, 0))
         frame_path = f"/tmp/frame_{video_id}_{i}.png"
         img.save(frame_path)
         frames.append(frame_path)
 
-    # Create video
     clips = [ImageClip(f).set_duration(1.5) for f in frames]
     final_video = concatenate_videoclips(clips, method="compose")
     output_path = os.path.join(OUTPUT_DIR, f"{video_id}.mp4")
-    final_video.write_videofile(output_path, fps=24, codec="libx264")
+    final_video.write_videofile(output_path, fps=24, codec="libx264", audio=False)
 
-    # Clean up frames
     for frame in frames:
         os.remove(frame)
 
